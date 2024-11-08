@@ -6,7 +6,7 @@ int main(void) {
     linked_list_t list = {};
 
     printf("ctor            | %d\n", linked_list_ctor(&list, 4));
-    printf("insert after 0  | %d\n", linked_list_insert_after(&list, 0, 10)); //TODO zero can be used only one time
+    printf("insert after 0  | %d\n", linked_list_insert_after(&list, 0, 10));
     printf("insert after 1  | %d\n", linked_list_insert_after(&list, 1, 20));
     printf("insert after 1  | %d\n", linked_list_insert_after(&list, 1, 30));
     LINKED_LIST_DUMP(list);

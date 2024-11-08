@@ -12,6 +12,23 @@
     static const char   *dump_png_file_folder      = "img/";
     static const size_t  max_file_name_length      = 64;
     static const size_t  max_system_command_length = 256;
+    static const char   *zero_color = "#BFECFF";
+    static const char   *head_color = "#CDC1FF";
+    static const char   *tail_color = "#FFCCEA";
+    static const char   *elem_color = "#FFF6E3";
+    static const char   *free_color = "#C1CFA1";
+
+    static const char  *linked_list_element_color   (linked_list_t *list,
+                                                     size_t         node);
+    static list_error_t linked_list_create_png_dump (linked_list_t *list,
+                                                     const char    *png_filename,
+                                                     const char    *dot_filename,
+                                                     const char    *caller_file,
+                                                     size_t         caller_line,
+                                                     const char    *caller_function,
+                                                     const char    *list_variable_name);
+    static list_error_t linked_list_create_dot_dump (linked_list_t *list,
+                                                     const char    *filename);
 #endif
 
 #ifndef LINKED_LIST_OFF_VERIFICATION
@@ -80,14 +97,14 @@ list_error_t linked_list_ctor(linked_list_t *list, size_t capacity) {
 
 list_error_t linked_list_insert_after(linked_list_t *list, size_t real_index, data_t data) {
     LINKED_LIST_VERIFY(list);
-    C_ASSERT(real_index  <  list->capacity + 1, return LINKED_LIST_INVALID_INDEX);
+    C_ASSERT(real_index < list->capacity + 1, return LINKED_LIST_INVALID_INDEX);
 
     return linked_list_insert_between(list, real_index, list->array[real_index].next, data);
 }
 
 list_error_t linked_list_insert_before(linked_list_t *list, size_t real_index, data_t data) {
     LINKED_LIST_VERIFY(list);
-    C_ASSERT(real_index  <  list->capacity + 1, return LINKED_LIST_INVALID_INDEX);
+    C_ASSERT(real_index < list->capacity + 1, return LINKED_LIST_INVALID_INDEX);
 
     return linked_list_insert_between(list, list->array[real_index].prev, real_index, data);
 }
@@ -139,6 +156,7 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                                   size_t         caller_line,
                                   const char    *caller_function,
                                   const char    *list_variable_name) {
+        C_ASSERT(list               != NULL, return LINKED_LIST_NULL_PARAMETER);
         C_ASSERT(caller_file        != NULL, return LINKED_LIST_NULL_PARAMETER);
         C_ASSERT(caller_line        != NULL, return LINKED_LIST_NULL_PARAMETER);
         C_ASSERT(list_variable_name != NULL, return LINKED_LIST_NULL_PARAMETER);
@@ -156,58 +174,31 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                 dump_png_file_folder,
                 list->dumps_number);
 
-        FILE *dot_file = fopen(dot_filename, "wb");
-        if(dot_file == NULL) {
-            color_printf(RED_TEXT, BOLD_TEXT, DEFAULT_BACKGROUND,
-                         "Error while opening dump file.\r\n");
-            return LINKED_LIST_DUMP_ERROR;
+        list_error_t error_code = LINKED_LIST_SUCCESS;
+        if((error_code = linked_list_create_dot_dump(list, dot_filename)) != LINKED_LIST_SUCCESS) {
+            return error_code;
         }
 
-        fputs("digraph {\r\n"
-              "node[shape = Mrecord, style = filled, fillcolor = \"#C1CFA1\"];\r\n"
-              "edge[arrowhead = empty, color = \"#FFBD73\", style = bold];\r\n"
-              "rankdir = LR;\r\n", dot_file);
-
-        size_t head_index = linked_list_get_head(list);
-        size_t tail_index = linked_list_get_tail(list);
-
-        for(size_t node = 0; node < list->capacity + 1; node++) {
-            fprintf(dot_file, "node%llx[label = \"%llu | {prev = %llx} | {next = %llx} | {data = %d}\"",
-                    node,
-                    node,
-                    list->array[node].prev == poison_index ? 0 : list->array[node].prev,
-                    list->array[node].next,
-                    list->array[node].data);
-
-            if(node == 0) {
-                fputs(", fillcolor = \"#BFECFF\"", dot_file);
-            }
-            else if(node == head_index) {
-                fputs(", fillcolor = \"#CDC1FF\"", dot_file);
-            }
-            else if(node == tail_index) {
-                fputs(", fillcolor = \"#FFCCEA\"", dot_file);
-            }
-            else if(list->array[node].prev != poison_index) {
-                fputs(", fillcolor = \"#FFF6E3\"", dot_file);
-            }
-
-            fputs("];\r\n", dot_file);
+        if((error_code = linked_list_create_png_dump(list,
+                                                     png_filename,
+                                                     dot_filename,
+                                                     caller_file,
+                                                     caller_line,
+                                                     caller_function,
+                                                     list_variable_name)) != LINKED_LIST_SUCCESS) {
+            return error_code;
         }
+        list->dumps_number++;
+        return LINKED_LIST_SUCCESS;
+    }
 
-        for(size_t edge = 0; edge + 1 < list->capacity + 1; edge++) {
-            fprintf(dot_file, "node%llx -> node%llx[style = invis, weight = 1000.0]\r\n",
-            edge, edge + 1);
-        }
-
-        for(size_t node = 0; list->array[node].next != 0; node = list->array[node].next) {
-            fprintf(dot_file, "node%llx -> node%llx\r\n",
-                    node, list->array[node].next);
-        }
-
-        fputs("}", dot_file);
-        fclose(dot_file);
-
+    list_error_t linked_list_create_png_dump(linked_list_t *list,
+                                             const char    *png_filename,
+                                             const char    *dot_filename,
+                                             const char    *caller_file,
+                                             size_t         caller_line,
+                                             const char    *caller_function,
+                                             const char    *list_variable_name) {
         char dot_system_command[max_system_command_length] = {};
         sprintf(dot_system_command,
                 "dot %s -Tpng -o %s%s",
@@ -235,9 +226,77 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                 list->array,
                 png_filename);
         fflush(list->general_dump_file);
-
-        list->dumps_number++;
         return LINKED_LIST_SUCCESS;
+    }
+
+    list_error_t linked_list_create_dot_dump(linked_list_t *list,
+                                             const char    *filename) {
+        FILE *dot_file = fopen(filename, "wb");
+        if(dot_file == NULL) {
+            color_printf(RED_TEXT, BOLD_TEXT, DEFAULT_BACKGROUND,
+                         "Error while opening dump file.\r\n");
+            return LINKED_LIST_DUMP_ERROR;
+        }
+
+        fputs("digraph {\r\n"
+              "graph[splines = ortho];\r\n"
+              "node[shape = Mrecord, style = filled];\r\n"
+              "rankdir = LR;\r\n", dot_file);
+
+        for(size_t node = 0; node < list->capacity + 1; node++) {
+            const char *color = linked_list_element_color(list, node);
+            fprintf(dot_file,
+                    "node%llx[label = \"%llu | {prev = %llx} | "
+                                              "{next = %llx} | "
+                                              "{data = %d  }\", "
+                    "fillcolor = \"%s\"];\n",
+                    node,
+                    node,
+                    list->array[node].prev == poison_index ? 0 : list->array[node].prev,
+                    list->array[node].next,
+                    list->array[node].data,
+                    color);
+        }
+
+        for(size_t edge = 0; edge + 1 < list->capacity + 1; edge++) {
+            fprintf(dot_file, "node%llx -> node%llx[style = invis, weight = 100000.0]\r\n",
+            edge, edge + 1);
+        }
+
+        size_t node = 0;
+        for(node = 0; list->array[node].next != 0; node = list->array[node].next) {
+            fprintf(dot_file, "node%llx -> node%llx[color = \"#06d6a0\", constraint = false];\r\n",
+                    node, list->array[node].next);
+        }
+        fprintf(dot_file, "node%llx -> node%llx[color = \"#06d6a0\", constraint = false];\r\n",
+                node, list->array[node].next);
+
+        for(node = 0; list->array[node].prev != 0; node = list->array[node].prev) {
+            fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
+                    node, list->array[node].prev);
+        }
+        fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
+                node, list->array[node].prev);
+
+        fputs("}\n", dot_file);
+        fclose(dot_file);
+        return LINKED_LIST_SUCCESS;
+    }
+
+    const char *linked_list_element_color(linked_list_t *list, size_t node) {
+        if(node == 0) {
+            return zero_color;
+        }
+        else if(node == linked_list_get_head(list)) {
+            return head_color;
+        }
+        else if(node == linked_list_get_tail(list)) {
+            return tail_color;
+        }
+        else if(list->array[node].prev != poison_index) {
+            return elem_color;
+        }
+        return free_color;
     }
 #endif
 
