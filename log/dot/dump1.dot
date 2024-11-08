@@ -1,0 +1,20 @@
+digraph {
+graph[splines = ortho];
+node[shape = Mrecord, style = filled];
+rankdir = LR;
+node0[label = "0 | {prev = 2} | {next = 1} | {data = 211  }", fillcolor = "#BFECFF"];
+node1[label = "1 | {prev = 0} | {next = 2} | {data = 10  }", fillcolor = "#CDC1FF"];
+node2[label = "2 | {prev = 1} | {next = 0} | {data = 20  }", fillcolor = "#FFCCEA"];
+node3[label = "3 | {prev = \n(POISON)} | {next = 4} | {data = -1  }", fillcolor = "#C1CFA1"];
+node4[label = "4 | {prev = \n(POISON)} | {next = 5} | {data = -1  }", fillcolor = "#C1CFA1"];
+node0 -> node1[style = invis, weight = 100000.0];
+node1 -> node2[style = invis, weight = 100000.0];
+node2 -> node3[style = invis, weight = 100000.0];
+node3 -> node4[style = invis, weight = 100000.0];
+node0 -> node1[color = "#06d6a0", constraint = false];
+node1 -> node2[color = "#06d6a0", constraint = false];
+node2 -> node0[color = "#06d6a0", constraint = false];
+node0 -> node2[color = "#ff006e", constraint = false];
+node2 -> node1[color = "#ff006e", constraint = false];
+node1 -> node0[color = "#ff006e", constraint = false];
+}

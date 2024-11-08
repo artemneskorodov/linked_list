@@ -18,17 +18,19 @@
     static const char   *elem_color = "#FFF6E3";
     static const char   *free_color = "#C1CFA1";
 
-    static const char  *linked_list_element_color   (linked_list_t *list,
-                                                     size_t         node);
-    static list_error_t linked_list_create_png_dump (linked_list_t *list,
-                                                     const char    *png_filename,
-                                                     const char    *dot_filename,
-                                                     const char    *caller_file,
-                                                     size_t         caller_line,
-                                                     const char    *caller_function,
-                                                     const char    *list_variable_name);
-    static list_error_t linked_list_create_dot_dump (linked_list_t *list,
-                                                     const char    *filename);
+    static const char  *linked_list_element_color          (linked_list_t *list,
+                                                            size_t         node);
+    static list_error_t linked_list_create_png_dump        (linked_list_t *list,
+                                                            const char    *png_filename,
+                                                            const char    *dot_filename,
+                                                            const char    *caller_file,
+                                                            size_t         caller_line,
+                                                            const char    *caller_function,
+                                                            const char    *list_variable_name);
+    static list_error_t linked_list_create_dot_dump        (linked_list_t *list,
+                                                            const char    *filename);
+    static list_error_t linked_list_write_node_connections (linked_list_t *list,
+                                                            FILE          *dot_file);
 #endif
 
 #ifndef LINKED_LIST_OFF_VERIFICATION
@@ -245,21 +247,36 @@ list_error_t linked_list_dtor(linked_list_t *list) {
 
         for(size_t node = 0; node < list->capacity + 1; node++) {
             const char *color = linked_list_element_color(list, node);
+            char prev[16] = {};
+            if(list->array[node].prev == poison_index) {
+                sprintf(prev, "\\n(POISON)");
+            }
+            else {
+                sprintf(prev, "%llx", list->array[node].prev);
+            }
+
             fprintf(dot_file,
-                    "node%llx[label = \"%llu | {prev = %llx} | "
-                                              "{next = %llx} | "
-                                              "{data = %d  }\", "
+                    "node%llx[label = \"%llu | {prev = %s} | {next = %llx} | {data = %d  }\", "
                     "fillcolor = \"%s\"];\n",
                     node,
                     node,
-                    list->array[node].prev == poison_index ? 0 : list->array[node].prev,
+                    prev,
                     list->array[node].next,
                     list->array[node].data,
                     color);
         }
 
+        linked_list_write_node_connections(list, dot_file);
+
+        fputs("}\n", dot_file);
+        fclose(dot_file);
+        return LINKED_LIST_SUCCESS;
+    }
+
+    list_error_t linked_list_write_node_connections(linked_list_t *list,
+                                                    FILE          *dot_file) {
         for(size_t edge = 0; edge + 1 < list->capacity + 1; edge++) {
-            fprintf(dot_file, "node%llx -> node%llx[style = invis, weight = 100000.0]\r\n",
+            fprintf(dot_file, "node%llx -> node%llx[style = invis, weight = 100000.0];\r\n",
             edge, edge + 1);
         }
 
@@ -278,8 +295,6 @@ list_error_t linked_list_dtor(linked_list_t *list) {
         fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
                 node, list->array[node].prev);
 
-        fputs("}\n", dot_file);
-        fclose(dot_file);
         return LINKED_LIST_SUCCESS;
     }
 
