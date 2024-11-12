@@ -18,6 +18,7 @@ int main(void) {
     LINKED_LIST_DUMP(list);
     printf("insert after 2  | %d\n", linked_list_insert_after(&list, 2, 50));
     LINKED_LIST_DUMP(list);
+
     printf("insert before 1 | %d\n", linked_list_insert_before(&list, 1, 222));
 
     LINKED_LIST_DUMP(list);

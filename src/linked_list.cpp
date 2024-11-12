@@ -5,18 +5,22 @@
 #include "colors.h"
 #include "linked_list.h"
 
+/*=======================================================================================*/
+
 #ifndef LINKED_LIST_OFF_DUMP
     static const char   *general_log_file_name     = "log/list.html";
-    static const char   *log_folder                = "log/";
-    static const char   *dump_dot_file_folder      = "dot/";
-    static const char   *dump_png_file_folder      = "img/";
+    static const char   *log_folder                = "log";
+    static const char   *dump_dot_file_folder      = "dot";
+    static const char   *dump_png_file_folder      = "img";
     static const size_t  max_file_name_length      = 64;
     static const size_t  max_system_command_length = 256;
-    static const char   *zero_color = "#BFECFF";
-    static const char   *head_color = "#CDC1FF";
-    static const char   *tail_color = "#FFCCEA";
-    static const char   *elem_color = "#FFF6E3";
-    static const char   *free_color = "#C1CFA1";
+    static const char   *zero_color                = "#bfecff";
+    static const char   *head_color                = "#cdc1ff";
+    static const char   *tail_color                = "#ffccea";
+    static const char   *elem_color                = "#fff6e3";
+    static const char   *free_color                = "#c1cfa1";
+
+    /*=======================================================================================*/
 
     static const char  *linked_list_element_color          (linked_list_t *list,
                                                             size_t         node);
@@ -31,7 +35,10 @@
                                                             const char    *filename);
     static list_error_t linked_list_write_node_connections (linked_list_t *list,
                                                             FILE          *dot_file);
+    static list_error_t linked_list_initialize_dump        (linked_list_t *list);
 #endif
+
+/*=======================================================================================*/
 
 #ifndef LINKED_LIST_OFF_VERIFICATION
     #define LINKED_LIST_VERIFY(__list)  {                         \
@@ -41,10 +48,14 @@
         }                                                         \
     }
 
+    /*=======================================================================================*/
+
     static list_error_t linked_list_verify(linked_list_t *list);
 #else
     #define LINKED_LIST_VERIFY(...)
 #endif
+
+/*=======================================================================================*/
 
 static list_error_t linked_list_find_free      (linked_list_t *list,
                                                 size_t        *output);
@@ -58,6 +69,8 @@ static list_error_t list_reallocate_memory     (linked_list_t *list);
 static list_error_t linked_list_set_default    (linked_list_t *list,
                                                 size_t         start,
                                                 size_t         end);
+
+/*=======================================================================================*/
 
 list_error_t linked_list_ctor(linked_list_t *list, size_t capacity) {
     C_ASSERT(list != NULL, return LINKED_LIST_NULL);
@@ -84,18 +97,16 @@ list_error_t linked_list_ctor(linked_list_t *list, size_t capacity) {
         return error_code;
     }
 
-    list->general_dump_file = fopen(general_log_file_name, "wb");
-    if(list->general_dump_file == NULL) {
-        color_printf(RED_TEXT, BOLD_TEXT, DEFAULT_BACKGROUND,
-                     "Error while opening log file.\r\n");
-        return LINKED_LIST_DUMP_ERROR;
-    }
 
-    fputs("<pre>\r\n", list->general_dump_file);
+    if((error_code = linked_list_initialize_dump(list)) != LINKED_LIST_SUCCESS) {
+        return error_code;
+    }
 
     LINKED_LIST_VERIFY(list);
     return LINKED_LIST_SUCCESS;
 }
+
+/*=======================================================================================*/
 
 list_error_t linked_list_insert_after(linked_list_t *list, size_t real_index, data_t data) {
     LINKED_LIST_VERIFY(list);
@@ -104,12 +115,16 @@ list_error_t linked_list_insert_after(linked_list_t *list, size_t real_index, da
     return linked_list_insert_between(list, real_index, list->array[real_index].next, data);
 }
 
+/*=======================================================================================*/
+
 list_error_t linked_list_insert_before(linked_list_t *list, size_t real_index, data_t data) {
     LINKED_LIST_VERIFY(list);
     C_ASSERT(real_index < list->capacity + 1, return LINKED_LIST_INVALID_INDEX);
 
     return linked_list_insert_between(list, list->array[real_index].prev, real_index, data);
 }
+
+/*=======================================================================================*/
 
 list_error_t linked_list_remove(linked_list_t *list, size_t real_index, data_t *output) {
     LINKED_LIST_VERIFY(list);
@@ -137,6 +152,8 @@ list_error_t linked_list_remove(linked_list_t *list, size_t real_index, data_t *
     return LINKED_LIST_SUCCESS;
 }
 
+/*=======================================================================================*/
+
 list_error_t linked_list_dtor(linked_list_t *list) {
     C_ASSERT(list != NULL, return LINKED_LIST_NULL);
 
@@ -152,6 +169,8 @@ list_error_t linked_list_dtor(linked_list_t *list) {
     return LINKED_LIST_SUCCESS;
 }
 
+/*=======================================================================================*/
+
 #ifndef LINKED_LIST_OFF_DUMP
     list_error_t linked_list_dump(linked_list_t *list,
                                   const char    *caller_file,
@@ -164,15 +183,15 @@ list_error_t linked_list_dtor(linked_list_t *list) {
         C_ASSERT(list_variable_name != NULL, return LINKED_LIST_NULL_PARAMETER);
 
         char dot_filename[max_file_name_length] = {};
-        char png_filename[max_file_name_length] = {};
+        char img_filename[max_file_name_length] = {};
 
         sprintf(dot_filename,
-                "%s%sdump%llu.dot",
+                "%s/%s/dump%llu.dot",
                 log_folder,
                 dump_dot_file_folder,
                 list->dumps_number);
-        sprintf(png_filename,
-                "%sdump%llu.png",
+        sprintf(img_filename,
+                "%s/dump%llu.svg",
                 dump_png_file_folder,
                 list->dumps_number);
 
@@ -182,7 +201,7 @@ list_error_t linked_list_dtor(linked_list_t *list) {
         }
 
         if((error_code = linked_list_create_png_dump(list,
-                                                     png_filename,
+                                                     img_filename,
                                                      dot_filename,
                                                      caller_file,
                                                      caller_line,
@@ -194,8 +213,10 @@ list_error_t linked_list_dtor(linked_list_t *list) {
         return LINKED_LIST_SUCCESS;
     }
 
+    /*=======================================================================================*/
+
     list_error_t linked_list_create_png_dump(linked_list_t *list,
-                                             const char    *png_filename,
+                                             const char    *img_filename,
                                              const char    *dot_filename,
                                              const char    *caller_file,
                                              size_t         caller_line,
@@ -203,14 +224,15 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                                              const char    *list_variable_name) {
         char dot_system_command[max_system_command_length] = {};
         sprintf(dot_system_command,
-                "dot %s -Tpng -o %s%s",
+                "dot %s -Tsvg -o %s/%s",
                 dot_filename,
                 log_folder,
-                png_filename);
+                img_filename);
         system(dot_system_command);
 
         fprintf(list->general_dump_file,
-                "<h1>Linked list dump %llu</h1>"
+                "<h1>==========================================================</h1>\r\n"
+                "<h1>Linked list dump %llu</h1>\r\n"
                 "Called from '%s' in %s:%llu\r\n"
                 "%s [0x%p]\r\n"
                 "\tcapacity = %llu\r\n"
@@ -226,10 +248,12 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                 list->capacity,
                 list->free,
                 list->array,
-                png_filename);
+                img_filename);
         fflush(list->general_dump_file);
         return LINKED_LIST_SUCCESS;
     }
+
+    /*=======================================================================================*/
 
     list_error_t linked_list_create_dot_dump(linked_list_t *list,
                                              const char    *filename) {
@@ -241,7 +265,6 @@ list_error_t linked_list_dtor(linked_list_t *list) {
         }
 
         fputs("digraph {\r\n"
-              "graph[splines = ortho];\r\n"
               "node[shape = Mrecord, style = filled];\r\n"
               "rankdir = LR;\r\n", dot_file);
 
@@ -257,7 +280,8 @@ list_error_t linked_list_dtor(linked_list_t *list) {
 
             fprintf(dot_file,
                     "node%llx[label = \"%llu | {prev = %s} | {next = %llx} | {data = %d  }\", "
-                    "fillcolor = \"%s\"];\n",
+                    "fillcolor = \"%s\", "
+                    "width = 1.5, height = 2];\n",
                     node,
                     node,
                     prev,
@@ -268,32 +292,43 @@ list_error_t linked_list_dtor(linked_list_t *list) {
 
         linked_list_write_node_connections(list, dot_file);
 
+        fprintf(dot_file, "FREE[fillcolor = \"#d8e2dc\"]");
+        if(list->free < list->capacity + 1) {
+            fprintf(dot_file, "FREE -> node%llx[color = \"#9d8189\", constraint = false];\r\n", list->free);
+        }
+
+        for(size_t free = list->free; free < list->capacity; free = list->array[free].next) {
+            fprintf(dot_file, "node%llx -> node%llx[color = \"#9d8189\", constraint = false];\r\n",
+            free, list->array[free].next);
+        }
+
         fputs("}\n", dot_file);
         fclose(dot_file);
         return LINKED_LIST_SUCCESS;
     }
 
+    /*=======================================================================================*/
+
     list_error_t linked_list_write_node_connections(linked_list_t *list,
                                                     FILE          *dot_file) {
-        for(size_t edge = 0; edge + 1 < list->capacity + 1; edge++) {
-            fprintf(dot_file, "node%llx -> node%llx[style = invis, weight = 100000.0];\r\n",
+        for(size_t edge = 0; edge < list->capacity ; edge++) {
+            fprintf(dot_file, "node%llx -> node%llx[style = invis];\r\n",
             edge, edge + 1);
         }
 
-        size_t node = 0;
-        for(node = 0; list->array[node].next != 0; node = list->array[node].next) {
-            fprintf(dot_file, "node%llx -> node%llx[color = \"#06d6a0\", constraint = false];\r\n",
-                    node, list->array[node].next);
-        }
-        fprintf(dot_file, "node%llx -> node%llx[color = \"#06d6a0\", constraint = false];\r\n",
-                node, list->array[node].next);
 
-        for(node = 0; list->array[node].prev != 0; node = list->array[node].prev) {
-            fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
-                    node, list->array[node].prev);
+        for(size_t node = 0, counter = 0; node != 0 || counter == 0; counter++, node = list->array[node].next) {
+            if(list->array[list->array[node].next].prev == node) {
+                fprintf(dot_file, "node%llx -> node%llx[color = \"#06d6a0\", constraint = false];\r\n",
+                        node, list->array[node].next);
+            }
+            else {
+                fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
+                        node, list->array[node].next);
+                fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
+                        list->array[node].next, list->array[list->array[node].next].prev);
+            }
         }
-        fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
-                node, list->array[node].prev);
 
         return LINKED_LIST_SUCCESS;
     }
@@ -313,7 +348,35 @@ list_error_t linked_list_dtor(linked_list_t *list) {
         }
         return free_color;
     }
+
+    /*=======================================================================================*/
+
+    list_error_t linked_list_initialize_dump(linked_list_t *list) {
+
+        char command[max_system_command_length] = {};
+        sprintf(command, "md %s", log_folder);
+        system(command);
+
+        sprintf(command, "md %s\\%s", log_folder, dump_dot_file_folder);
+        system(command);
+
+        sprintf(command, "md %s\\%s", log_folder, dump_png_file_folder);
+        system(command);
+
+        list->general_dump_file = fopen(general_log_file_name, "wb");
+        if(list->general_dump_file == NULL) {
+            color_printf(RED_TEXT, BOLD_TEXT, DEFAULT_BACKGROUND,
+                         "Error while opening log file.\r\n");
+            return LINKED_LIST_DUMP_ERROR;
+        }
+
+        fputs("<pre>\r\n", list->general_dump_file);
+
+        return LINKED_LIST_SUCCESS;
+    }
 #endif
+
+/*=======================================================================================*/
 
 list_error_t linked_list_find_free(linked_list_t *list, size_t *output) {
     LINKED_LIST_VERIFY(list);
@@ -333,6 +396,8 @@ list_error_t linked_list_find_free(linked_list_t *list, size_t *output) {
     LINKED_LIST_VERIFY(list);
     return LINKED_LIST_SUCCESS;
 }
+
+/*=======================================================================================*/
 
 list_error_t linked_list_insert_between(linked_list_t *list,
                                         size_t         prev_node,
@@ -360,6 +425,8 @@ list_error_t linked_list_insert_between(linked_list_t *list,
     LINKED_LIST_VERIFY(list);
     return LINKED_LIST_SUCCESS;
 }
+
+/*=======================================================================================*/
 
 list_error_t list_reallocate_memory(linked_list_t *list) {
     LINKED_LIST_VERIFY(list);
@@ -392,17 +459,23 @@ list_error_t list_reallocate_memory(linked_list_t *list) {
     return LINKED_LIST_SUCCESS;
 }
 
+/*=======================================================================================*/
+
 size_t linked_list_get_head(linked_list_t *list) {
     LINKED_LIST_VERIFY(list);
 
     return list->array->next;
 }
 
+/*=======================================================================================*/
+
 size_t linked_list_get_tail(linked_list_t *list) {
     LINKED_LIST_VERIFY(list);
 
     return list->array->prev;
 }
+
+/*=======================================================================================*/
 
 list_error_t linked_list_set_default(linked_list_t *list,
                                      size_t         start,
@@ -418,6 +491,8 @@ list_error_t linked_list_set_default(linked_list_t *list,
     LINKED_LIST_VERIFY(list);
     return LINKED_LIST_SUCCESS;
 }
+
+/*=======================================================================================*/
 
 #ifndef LINKED_LIST_OFF_VERIFICATION
     list_error_t linked_list_verify(linked_list_t *list) {
