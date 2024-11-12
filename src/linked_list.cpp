@@ -36,6 +36,9 @@
     static list_error_t linked_list_write_node_connections (linked_list_t *list,
                                                             FILE          *dot_file);
     static list_error_t linked_list_initialize_dump        (linked_list_t *list);
+
+    static list_error_t linked_list_write_nodes            (linked_list_t *list,
+                                                            FILE          *dot_file);
 #endif
 
 /*=======================================================================================*/
@@ -266,8 +269,31 @@ list_error_t linked_list_dtor(linked_list_t *list) {
 
         fputs("digraph {\r\n"
               "node[shape = Mrecord, style = filled];\r\n"
+              "splines=ortho;\r\n"
               "rankdir = LR;\r\n", dot_file);
 
+        linked_list_write_nodes(list, dot_file);
+
+        linked_list_write_node_connections(list, dot_file);
+
+        fprintf(dot_file, "FREE[fillcolor = \"#d8e2dc\"]");
+        if(list->free < list->capacity + 1) {
+            fprintf(dot_file, "FREE -> node%llx[color = \"#9d8189\", constraint = false];\r\n", list->free);
+        }
+
+        for(size_t free = list->free; free < list->capacity; free = list->array[free].next) {
+            fprintf(dot_file, "node%llx -> node%llx[color = \"#9d8189\", constraint = false];\r\n",
+            free, list->array[free].next);
+        }
+
+        fputs("}\n", dot_file);
+        fclose(dot_file);
+        return LINKED_LIST_SUCCESS;
+    }
+
+    /*=======================================================================================*/
+
+    list_error_t linked_list_write_nodes(linked_list_t *list, FILE *dot_file) {
         for(size_t node = 0; node < list->capacity + 1; node++) {
             const char *color = linked_list_element_color(list, node);
             char prev[16] = {};
@@ -289,21 +315,6 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                     list->array[node].data,
                     color);
         }
-
-        linked_list_write_node_connections(list, dot_file);
-
-        fprintf(dot_file, "FREE[fillcolor = \"#d8e2dc\"]");
-        if(list->free < list->capacity + 1) {
-            fprintf(dot_file, "FREE -> node%llx[color = \"#9d8189\", constraint = false];\r\n", list->free);
-        }
-
-        for(size_t free = list->free; free < list->capacity; free = list->array[free].next) {
-            fprintf(dot_file, "node%llx -> node%llx[color = \"#9d8189\", constraint = false];\r\n",
-            free, list->array[free].next);
-        }
-
-        fputs("}\n", dot_file);
-        fclose(dot_file);
         return LINKED_LIST_SUCCESS;
     }
 
@@ -326,7 +337,7 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                 fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
                         node, list->array[node].next);
                 fprintf(dot_file, "node%llx -> node%llx[color = \"#ff006e\", constraint = false];\r\n",
-                        list->array[node].next, list->array[list->array[node].next].prev);
+                        list->array[list->array[node].next].prev, list->array[node].next);
             }
         }
 
@@ -371,6 +382,15 @@ list_error_t linked_list_dtor(linked_list_t *list) {
         }
 
         fputs("<pre>\r\n", list->general_dump_file);
+
+        fprintf(list->general_dump_file,
+                "<pre>\r\n"
+                "<h3 style = \"background: %s;\">zero element color</h3>"
+                "<h3 style = \"background: %s;\">head element color</h3>"
+                "<h3 style = \"background: %s;\">tail element color</h3>"
+                "<h3 style = \"background: %s;\">node element color</h3>"
+                "<h3 style = \"background: %s;\">free element color</h3>\n",
+                zero_color, head_color, tail_color, elem_color, free_color);
 
         return LINKED_LIST_SUCCESS;
     }
@@ -462,16 +482,12 @@ list_error_t list_reallocate_memory(linked_list_t *list) {
 /*=======================================================================================*/
 
 size_t linked_list_get_head(linked_list_t *list) {
-    LINKED_LIST_VERIFY(list);
-
     return list->array->next;
 }
 
 /*=======================================================================================*/
 
 size_t linked_list_get_tail(linked_list_t *list) {
-    LINKED_LIST_VERIFY(list);
-
     return list->array->prev;
 }
 

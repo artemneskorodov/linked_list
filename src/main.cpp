@@ -23,6 +23,10 @@ int main(void) {
 
     LINKED_LIST_DUMP(list);
 
+    list.array[4].prev = 5;
+
+    LINKED_LIST_DUMP(list);
+
     printf("dtor            | %d\n", linked_list_dtor(&list));
 
 }
