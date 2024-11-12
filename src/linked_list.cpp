@@ -30,7 +30,8 @@
                                                             const char    *caller_file,
                                                             size_t         caller_line,
                                                             const char    *caller_function,
-                                                            const char    *list_variable_name);
+                                                            const char    *list_variable_name,
+                                                            const char    *header);
     static list_error_t linked_list_create_dot_dump        (linked_list_t *list,
                                                             const char    *filename);
     static list_error_t linked_list_write_node_connections (linked_list_t *list,
@@ -179,7 +180,8 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                                   const char    *caller_file,
                                   size_t         caller_line,
                                   const char    *caller_function,
-                                  const char    *list_variable_name) {
+                                  const char    *list_variable_name,
+                                  const char    *header) {
         C_ASSERT(list               != NULL, return LINKED_LIST_NULL_PARAMETER);
         C_ASSERT(caller_file        != NULL, return LINKED_LIST_NULL_PARAMETER);
         C_ASSERT(caller_line        != NULL, return LINKED_LIST_NULL_PARAMETER);
@@ -209,7 +211,8 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                                                      caller_file,
                                                      caller_line,
                                                      caller_function,
-                                                     list_variable_name)) != LINKED_LIST_SUCCESS) {
+                                                     list_variable_name,
+                                                     header)) != LINKED_LIST_SUCCESS) {
             return error_code;
         }
         list->dumps_number++;
@@ -224,7 +227,8 @@ list_error_t linked_list_dtor(linked_list_t *list) {
                                              const char    *caller_file,
                                              size_t         caller_line,
                                              const char    *caller_function,
-                                             const char    *list_variable_name) {
+                                             const char    *list_variable_name,
+                                             const char    *header) {
         char dot_system_command[max_system_command_length] = {};
         sprintf(dot_system_command,
                 "dot %s -Tsvg -o %s/%s",
@@ -235,14 +239,14 @@ list_error_t linked_list_dtor(linked_list_t *list) {
 
         fprintf(list->general_dump_file,
                 "<h1>==========================================================</h1>\r\n"
-                "<h1>Linked list dump %llu</h1>\r\n"
+                "<h1>Linked list dump '%s'</h1>\r\n"
                 "Called from '%s' in %s:%llu\r\n"
                 "%s [0x%p]\r\n"
                 "\tcapacity = %llu\r\n"
                 "\tfree     = %llu\r\n"
                 "\tdata [0x%p]\r\n"
                 "<img src = \"%s\">\r\n",
-                list->dumps_number + 1,
+                header,
                 caller_function,
                 caller_file,
                 caller_line,

@@ -43,18 +43,20 @@ struct linked_list_t {
 #ifdef LINKED_LIST_OFF_DUMP
     #define LINKED_LIST_DUMP(...)
 #else
-    #define LINKED_LIST_DUMP(__list)         \
-        linked_list_dump(&(__list),          \
-                         __FILE__,           \
-                         __LINE__,           \
-                         __PRETTY_FUNCTION__,\
-                         #__list);
+    #define LINKED_LIST_DUMP(__list, __header)\
+        linked_list_dump(&(__list),           \
+                         __FILE__,            \
+                         __LINE__,            \
+                         __PRETTY_FUNCTION__, \
+                         #__list,             \
+                         (__header));
 
     list_error_t linked_list_dump(linked_list_t *list,
                                   const char    *caller_file,
                                   size_t         caller_line,
                                   const char    *caller_function,
-                                  const char    *list_variable_name);
+                                  const char    *list_variable_name,
+                                  const char    *header);
 #endif
 
 list_error_t linked_list_ctor          (linked_list_t *list,
